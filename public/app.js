@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://pcrumthbyecczeumvvzu.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcnVtdGhieWVjY3pldW12dnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0ODY3MzAsImV4cCI6MjA4NDA2MjczMH0.hbC34EXo8J8LilmStRGQV-bbaNI8-QHy5rmXh97yVhE';
+let SUPABASE_URL;
+let SUPABASE_KEY;
 
 let supabase;
 let currentUser = null;
@@ -9,11 +9,16 @@ let currentEvtSource = null;
 let lastLogMsg = '';
 
 // Initialize when DOM is ready
-function initializeApp() {
+async function initializeApp() {
     console.log('[App] Initializing...');
 
-    // 1. Init Supabase
+    // 1. Fetch Config & Init Supabase
     try {
+        const configRes = await fetch('/api/config');
+        const config = await configRes.json();
+        SUPABASE_URL = config.supabaseUrl;
+        SUPABASE_KEY = config.supabaseKey;
+
         if (!window.supabase) throw new Error('Supabase client not loaded');
         // Check if already initialized to avoid re-init issues if called multiple times
         if (!supabase) {
@@ -22,7 +27,7 @@ function initializeApp() {
         }
     } catch (e) {
         console.error('[App] Init Error:', e);
-        alert('Internal Error: Supabase failed to load. Please refresh.');
+        alert('Internal Error: Failed to load configuration. Please refresh.');
         return;
     }
 
