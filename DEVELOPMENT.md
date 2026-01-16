@@ -28,16 +28,37 @@
 ## 📘 Guides
 
 ### 🏃 How to Run Locally
-1.  **Prerequisites**: Node.js installed.
-2.  **Install Dependencies**:
+
+#### Starting the Server
+1.  **Open Terminal**: Navigate to the project folder.
+2.  **Install Dependencies** (First time only):
     ```bash
     npm install
+    # If using PowerShell and you get policy errors:
+    # Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     ```
-3.  **Start Server**:
+3.  **Start the App**:
     ```bash
-    npm start
+    node server.js
     ```
-4.  **Access**: Open `http://localhost:3000`.
+    *Note: We use `node server.js` directly to avoid PowerShell script execution policy issues with `npm start`.*
+
+4.  **Verify**:
+    -   Server will say: `Server running at http://localhost:3000`
+    -   Open your browser to: [http://localhost:3000](http://localhost:3000)
+
+#### Stopping the Server
+1.  **Click inside the terminal** where the server is running.
+2.  Press `Ctrl + C` on your keyboard.
+3.  Type `y` (if prompted) and press `Enter`.
+4.  **Force Kill (If stuck)**:
+    -   If the port 3000 is still in use ("address already in use" error):
+    ```powershell
+    # Find the process ID (PID)
+    netstat -ano | findstr :3000
+    # Kill it (replace 1234 with the PID found above)
+    taskkill /PID 1234 /F
+    ```
 
 ### 🚢 Deployment Strategy
 We use **Docker** because the app requires system-level dependencies (`ffmpeg`, `chrome`).
