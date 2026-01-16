@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to MP4 Converter - HTMLHub</title>
+    <meta name="description"
+        content="Convert your HTML animations and files to high-quality MP4, WebM, and ProRes videos instantly. Support for 4K resolution and 60fps.">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://htmltomp4.com/">
+    <meta property="og:title" content="HTML to MP4 Converter - HTMLHub">
+    <meta property="og:description"
+        content="Convert HTML animations to MP4, WebM, or ProRes videos. 4K & 60fps supported.">
+    <meta property="og:image" content="https://htmltomp4.com/og-image.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://htmltomp4.com/">
+    <meta property="twitter:title" content="HTML to MP4 Converter - HTMLHub">
+    <meta property="twitter:description"
+        content="Convert HTML animations to MP4, WebM, or ProRes videos. 4K & 60fps supported.">
+    <meta property="twitter:image" content="https://htmltomp4.com/og-image.jpg">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://htmltomp4.com/">
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "HTMLHub Converter",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "A powerful tool to convert HTML/CSS/JS animations into video formats like MP4 and ProRes."
+    }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="controls">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1 style="margin: 0;">HTMLHub</h1>
+                <div id="authSection">
+                    <button id="loginBtn" class="btn-small">Login</button>
+                    <div id="profileSection" style="display: none; text-align: right;">
+                        <div id="userEmail" style="font-weight: bold; font-size: 0.9rem;"></div>
+                        <div id="creditDisplay" style="font-size: 0.8rem; color: var(--primary);">
+                            Credits: <span id="creditCount">0</span>
+                            <button id="addCreditsBtn" class="btn-small"
+                                style="padding: 2px 6px; font-size: 0.75rem; margin-left: 5px;">Get Credits</button>
+                        </div>
+                        <a href="#" id="logoutLink"
+                            style="font-size: 0.75rem; color: var(--text); opacity: 0.6;">Logout</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="filename">Source Files (Hold Ctrl/Cmd to select multiple)</label>
+                <select id="filename" multiple style="height: 150px;">
+                    <option value="" disabled>Loading files...</option>
+                </select>
+                <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <input type="file" id="uploadInput" accept=".html" multiple
+                        style="font-size: 0.8rem; padding: 0.5rem; flex: 1; min-width: 200px;">
+                    <button id="selectAllBtn" class="btn-small" style="white-space: nowrap;">Select All</button>
+                    <button id="deleteSelectedBtn" class="btn-small"
+                        style="white-space: nowrap; background: #d73a49;">Delete Selected</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Preview</label>
+                <div
+                    style="width: 100%; aspect-ratio: 16/9; background: #000; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+                    <iframe id="previewFrame" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="format">Format</label>
+                <select id="format">
+                    <option value="mp4">MP4 (H.264)</option>
+                    <option value="webm">WebM (Transparent)</option>
+                    <option value="prores">ProRes (High Quality)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resolution">Resolution</label>
+                <select id="resolution">
+                    <option value="1920x1080">1080p (1920x1080)</option>
+                    <option value="3840x2160" selected>4K (3840x2160)</option>
+                    <option value="1080x1080">Square (1080x1080)</option>
+                    <option value="1080x1920">Vertical (1080x1920)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="fps">Frame Rate</label>
+                <select id="fps">
+                    <option value="30">30 FPS</option>
+                    <option value="60" selected>60 FPS</option>
+                    <option value="120">120 FPS</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="duration">Duration (seconds)</label>
+                <input type="number" id="duration" value="5" min="1" max="60">
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #8b949e;">Estimated Cost:</div>
+                <div id="costBadge"
+                    style="background: var(--border); padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">
+                    1 Credit</div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button id="convertBtn" class="btn" style="flex: 1;">Start Conversion</button>
+                <button id="cancelBtn" class="btn" style="background: #d73a49; display: none;">Cancel</button>
+            </div>
+        </div>
+
+        <div class="logs-panel">
+            <div class="logs-header">
+                <span>Conversion Logs</span>
+                <div id="statusIndicator" class="status-indicator"></div>
+            </div>
+            <pre id="logs">Waiting for job...</pre>
+        </div>
+
+        <div class="jobs-panel" id="jobsPanel"
+            style="display: none; margin-top: 1.5rem; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; padding: 1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size: 1rem;">Recent Conversions</h3>
+                <div>
+                    <button id="refreshJobsBtn" class="btn-small" style="padding: 2px 8px;">↻</button>
+                </div>
+            </div>
+            <div id="jobsList"
+                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; max-height: 200px; overflow-y: auto;">
+                <!-- Jobs go here -->
+            </div>
+        </div>
+    </div>
+    <!-- Mock Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Login</h2>
+            <div id="authForms" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                <input type="email" id="emailInput" placeholder="Email" required>
+                <input type="password" id="passwordInput" placeholder="Password" required>
+                <button id="supabaseLoginBtn" class="btn">Sign In</button>
+                <button id="supabaseSignupBtn" class="btn-small">Sign Up</button>
+                <div id="authMessage" style="margin-top: 0.5rem; font-size: 0.8rem;"></div>
+            </div>
+            <button id="closeModalBtn" class="btn-small"
+                style="margin-top: 1rem; border-color: var(--border); color: var(--text);">Close</button>
+        </div>
+    </div>
+
+    <!-- Pricing Modal -->
+    <div id="pricingModal" class="modal">
+        <div class="modal-content pricing-content">
+            <h2 class="pricing-header">Upgrade your Creative Power</h2>
+            <p class="pricing-subtitle">Render faster, higher quality, without limits.</p>
+
+            <div class="pricing-cards">
+                <!-- Free Tier -->
+                <div class="card">
+                    <div class="card-title">Free</div>
+                    <div class="card-price">$0</div>
+                    <ul class="card-features">
+                        <li>5 Credits / Month</li>
+                        <li>Standard Queue</li>
+                        <li>1080p Limit</li>
+                    </ul>
+                    <button class="btn-card disabled" disabled>Current Plan</button>
+                </div>
+
+                <!-- Beta Tester (Dev) -->
+                <div class="card" style="border-color: #56d364;">
+                    <div class="card-badge" style="background: #56d364;">Testing</div>
+                    <div class="card-title">Beta Tester</div>
+                    <div class="card-price">Free</div>
+                    <ul class="card-features">
+                        <li><strong>+100 Credits</strong></li>
+                        <li>For Testing Only</li>
+                        <li>Enjoy!</li>
+                    </ul>
+                    <button id="claimCreditsBtn" class="btn-card"
+                        style="background: #238636; color: white;">Claim</button>
+                </div>
+
+                <!-- Credit Pack -->
+                <div class="card popular">
+                    <div class="card-badge">Most Popular</div>
+                    <div class="card-title">Credit Pack</div>
+                    <div class="card-price">$5.00</div>
+                    <ul class="card-features">
+                        <li>50 Credits</li>
+                        <li>Never Expire</li>
+                        <li>Standard Queue</li>
+                    </ul>
+                    <button id="buyPackBtn" class="btn-card primary">Buy Pack</button>
+                </div>
+
+                <!-- Pro Sub -->
+                <div class="card pro">
+                    <div class="card-title">Pro</div>
+                    <div class="card-price">$15<span style="font-size:0.8rem">/mo</span></div>
+                    <ul class="card-features">
+                        <li><strong>Unlimited</strong> Conversions</li>
+                        <li><strong>Priority GPU</strong> Queue</li>
+                        <li>4K & ProRes Support</li>
+                    </ul>
+                    <button id="subscribeBtn" class="btn-card accelerator">Subscribe</button>
+                </div>
+            </div>
+
+            <button id="closePricingBtn" class="btn-text">Maybe Later</button>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Standard script loading
+        const script = document.createElement('script');
+        script.src = `/app.js?v=${Date.now()}`;
+        document.body.appendChild(script);
+    </script>
+</body>
+
+</html>
