@@ -20,6 +20,7 @@ const { hideBin } = require('yargs/helpers');
 const { pathToFileURL } = require('url');
 
 const ROOT = __dirname;
+const CWD = process.cwd();
 
 // -------------------- Helpers: ffmpeg resolution & NVENC detection --------------------
 
@@ -69,8 +70,8 @@ function getConfig(args) {
     height: 2160,
     frameRate: 60,
     duration: 10, // seconds
-    inputDir: path.join(ROOT, 'html_files'),
-    outputDir: path.join(ROOT, 'output'),
+    inputDir: path.join(CWD, 'html_files'),
+    outputDir: path.join(CWD, 'output'),
 
     executablePath: undefined,     // Let Puppeteer find Chrome by default
     browser: undefined,
@@ -467,7 +468,7 @@ async function main() {
     .usage('Usage: $0 [html_files...] [options]')
     .option('width', { type: 'number' })
     .option('height', { type: 'number' })
-    .option('frameRate', { type: 'number' })
+    .option('frameRate', { type: 'number', alias: ['fps'] })
     .option('duration', { type: 'number' })
     .option('inputDir', { type: 'string' })
     .option('outputDir', { type: 'string' })
@@ -725,4 +726,6 @@ process.on('unhandledRejection', (reason, _promise) => {
   console.error('[convert] Unhandled Rejection:', reason);
 });
 
-main();
+if (require.main === module) { main(); }
+
+module.exports = { convertHtmlToVideo, getConfig, resolveFfmpegPathPreferNvenc, main };

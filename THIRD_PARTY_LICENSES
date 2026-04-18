@@ -1,0 +1,35 @@
+THIRD-PARTY SOFTWARE NOTICES
+============================
+
+This product includes software developed by third parties.
+
+--------------------------------------------------------------------------------
+FFmpeg
+--------------------------------------------------------------------------------
+License: GNU Lesser General Public License v2.1 or later (LGPL-2.1+)
+Source:  https://ffmpeg.org
+Binary:  Provided via the ffmpeg-static npm package (https://github.com/eugeneware/ffmpeg-static)
+
+This product dynamically invokes FFmpeg binaries. In compliance with the LGPL,
+the FFmpeg source code and the version used are available at the URL above.
+Users may recompile and replace the FFmpeg binary at any time by passing
+--ffmpegPath to the CLI.
+
+--------------------------------------------------------------------------------
+Chromium
+--------------------------------------------------------------------------------
+License: BSD 3-Clause (https://chromium.googlesource.com/chromium/src/+/main/LICENSE)
+Source:  https://www.chromium.org/chromium-projects/
+
+--------------------------------------------------------------------------------
+Puppeteer
+--------------------------------------------------------------------------------
+License: Apache 2.0
+Source:  https://github.com/puppeteer/puppeteer
+
+--------------------------------------------------------------------------------
+Other npm dependencies
+--------------------------------------------------------------------------------
+yargs      — MIT  — https://github.com/yargs/yargs
+dotenv     — BSD  — https://github.com/motdotla/dotenv
+uuid       — MIT  — https://github.com/uuidjs/uuid
