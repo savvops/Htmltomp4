@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Offline converter motion regression</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 320px; height: 180px; overflow: hidden; background: #121c28; }
+  main { display: grid; grid-template-columns: 160px 160px; grid-template-rows: 90px 90px; }
+  section { position: relative; overflow: hidden; width: 160px; height: 90px; }
+  .square { position: absolute; top: 28px; left: 12px; width: 30px; height: 30px; }
+  #css { background: #ed514b; animation: slide 1s linear infinite; animation-delay: 0.2s; }
+  #waapi { background: #538af5; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(100px); } }
+</style>
+<main>
+  <section aria-label="CSS keyframes"><div class="square" id="css"></div></section>
+  <section aria-label="Canvas requestAnimationFrame"><canvas id="canvas" width="160" height="90"></canvas></section>
+  <section aria-label="SVG SMIL">
+    <svg width="160" height="90" xmlns="http://www.w3.org/2000/svg">
+      <rect x="12" y="28" width="30" height="30" fill="#d960de">
+        <animate attributeName="x" from="12" to="112" dur="1s" repeatCount="indefinite" />
+      </rect>
+    </svg>
+  </section>
+  <section aria-label="Web Animations API"><div class="square" id="waapi"></div></section>
+</main>
+<script>
+  const canvas = document.getElementById('canvas');
+  const context = canvas.getContext('2d');
+  function draw(time) {
+    context.clearRect(0, 0, 160, 90);
+    context.fillStyle = '#51da83';
+    context.fillRect(12 + 100 * ((time % 1000) / 1000), 28, 30, 30);
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+  document.getElementById('waapi').animate(
+    [{ transform: 'translateX(0)' }, { transform: 'translateX(100px)' }],
+    { duration: 1000, delay: -200, iterations: Infinity, easing: 'linear' },
+  );
+</script>
+</html>

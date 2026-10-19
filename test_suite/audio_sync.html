@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Audio Capture and Sync Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0d0c1d;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+    }
+
+    .visualizer {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      height: 250px;
+      margin-bottom: 20px;
+    }
+
+    .bar {
+      width: 30px;
+      height: 10px;
+      background: linear-gradient(to top, #ff007f 0%, #00f3ff 100%);
+      border-radius: 6px;
+      transition: height 0.05s ease;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Frame: <span id="frame-counter">0</span></div>
+    <div>Perf Now: <span id="perf-now">0.00</span> ms</div>
+    <div>Date Now: <span id="date-now">0</span></div>
+    <div>Clock Type: <span id="clock-type">Detecting...</span></div>
+    <div>Audio Status: <span id="audio-status">Idle</span></div>
+  </div>
+
+  <div class="visualizer">
+    <div class="bar" id="bar1"></div>
+    <div class="bar" id="bar2"></div>
+    <div class="bar" id="bar3"></div>
+    <div class="bar" id="bar4"></div>
+    <div class="bar" id="bar5"></div>
+  </div>
+
+  <h2>Audio Sync Visualizer</h2>
+  <p style="opacity: 0.7;">Plays a synthesized melody using a dynamically generated WAV file in an HTML5 Audio tag.</p>
+
+  <audio id="player" loop></audio>
+
+  <script>
+    const frameCounter = document.getElementById('frame-counter');
+    const perfNow = document.getElementById('perf-now');
+    const dateNow = document.getElementById('date-now');
+    const clockType = document.getElementById('clock-type');
+    const audioStatus = document.getElementById('audio-status');
+    const player = document.getElementById('player');
+
+    // Create a 10-second synthesized audio file (melody) in a WAV format
+    function createSynthesizedWav() {
+      const sampleRate = 44100;
+      const duration = 10; // 10 seconds
+      const numSamples = sampleRate * duration;
+      const buffer = new ArrayBuffer(44 + numSamples * 2); // 16-bit mono
+      const view = new DataView(buffer);
+
+      /* RIFF identifier */
+      writeString(view, 0, 'RIFF');
+      /* file length */
+      view.setUint32(4, 36 + numSamples * 2, true);
+      /* RIFF type */
+      writeString(view, 8, 'WAVE');
+      /* format chunk identifier */
+      writeString(view, 12, 'fmt ');
+      /* format chunk length */
+      view.setUint32(16, 16, true);
+      /* sample format (raw pcm = 1) */
+      view.setUint16(20, 1, true);
+      /* channel count */
+      view.setUint16(22, 1, true);
+      /* sample rate */
+      view.setUint32(24, sampleRate, true);
+      /* byte rate (sample rate * block align) */
+      view.setUint32(28, sampleRate * 2, true);
+      /* block align (channel count * bytes per sample) */
+      view.setUint16(32, 2, true);
+      /* bits per sample */
+      view.setUint16(34, 16, true);
+      /* data chunk identifier */
+      writeString(view, 36, 'data');
+      /* data chunk length */
+      view.setUint32(40, numSamples * 2, true);
+
+      // Generate a simple arpeggio melody
+      const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; // C major scale
+      for (let i = 0; i < numSamples; i++) {
+        const time = i / sampleRate;
+        const noteIndex = Math.floor(time * 2) % notes.length; // Change note twice a second
+        const freq = notes[noteIndex];
+        
+        // Sine wave sample
+        let sample = Math.sin(2 * Math.PI * freq * time);
+        
+        // Modulate with simple envelope (decay)
+        const noteTime = time % 0.5;
+        const env = Math.exp(-noteTime * 6.0);
+        sample *= env;
+
+        // Scale to 16-bit signed integer
+        const val = Math.max(-32768, Math.min(32767, sample * 16000));
+        view.setInt16(44 + i * 2, val, true);
+      }
+
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function writeString(view, offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    // Initialize and play the audio
+    try {
+      const wavBlob = createSynthesizedWav();
+      player.src = URL.createObjectURL(wavBlob);
+      player.play()
+        .then(() => {
+          audioStatus.textContent = "PLAYING";
+          audioStatus.style.color = "#00ff66";
+        })
+        .catch(err => {
+          audioStatus.textContent = "BLOCKED: " + err.message;
+          audioStatus.style.color = "#ff3366";
+        });
+    } catch (e) {
+      audioStatus.textContent = "ERROR: " + e.message;
+      audioStatus.style.color = "#ff3366";
+    }
+
+    let frameCount = 0;
+    const bars = [
+      document.getElementById('bar1'),
+      document.getElementById('bar2'),
+      document.getElementById('bar3'),
+      document.getElementById('bar4'),
+      document.getElementById('bar5')
+    ];
+
+    function tick() {
+      frameCount++;
+      
+      // Update HUD
+      frameCounter.textContent = frameCount;
+      perfNow.textContent = performance.now().toFixed(2);
+      dateNow.textContent = Date.now();
+      
+      if (window.__HTV__ && window.__HTV__.hasRafShim) {
+        clockType.textContent = "DETERMINISTIC (Shimmed)";
+        clockType.style.color = "#00ff66";
+      } else {
+        clockType.textContent = "REALTIME (Standard)";
+        clockType.style.color = "#ff3366";
+      }
+
+      // Animate visualizer bars based on time and audio status
+      const t = performance.now() / 1000;
+      bars.forEach((bar, index) => {
+        let heightVal;
+        if (player.paused) {
+          heightVal = 10 + 5 * Math.sin(t * 5 + index);
+        } else {
+          // Sync heights with dynamic sine waves to represent visualizer bars
+          const noteTime = t % 0.5;
+          const decay = Math.exp(-noteTime * 6.0);
+          heightVal = 20 + (180 * decay) * (0.5 + 0.5 * Math.sin(t * (10 + index * 5)));
+        }
+        bar.style.height = `${heightVal}px`;
+      });
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

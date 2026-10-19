@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CSS 3D & Keyframes stress test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      perspective: 1000px;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+    }
+
+    .container {
+      width: 300px;
+      height: 300px;
+      position: relative;
+      transform-style: preserve-3d;
+    }
+
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      transform-style: preserve-3d;
+      animation: rotateCube 8s infinite linear;
+    }
+
+    .face {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border: 2px solid #00f3ff;
+      background: rgba(0, 243, 255, 0.1);
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      font-weight: bold;
+      backface-visibility: visible;
+    }
+
+    .front  { transform: rotateY(0deg) translateZ(150px); }
+    .back   { transform: rotateY(180deg) translateZ(150px); border-color: #ff007f; background: rgba(255, 0, 127, 0.1); box-shadow: 0 0 20px rgba(255, 0, 127, 0.5); }
+    .right  { transform: rotateY(90deg) translateZ(150px); border-color: #00ff66; background: rgba(0, 255, 102, 0.1); box-shadow: 0 0 20px rgba(0, 255, 102, 0.5); }
+    .left   { transform: rotateY(-90deg) translateZ(150px); border-color: #ffcc00; background: rgba(255, 204, 0, 0.1); box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); }
+    .top    { transform: rotateX(90deg) translateZ(150px); border-color: #9900ff; background: rgba(153, 0, 255, 0.1); box-shadow: 0 0 20px rgba(153, 0, 255, 0.5); }
+    .bottom { transform: rotateX(-90deg) translateZ(150px); border-color: #ff6600; background: rgba(255, 102, 0, 0.1); box-shadow: 0 0 20px rgba(255, 102, 0, 0.5); }
+
+    @keyframes rotateCube {
+      0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+      100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
+    }
+
+    /* A smooth linear scanning bar to check for visual stutter/dropped frames */
+    #scanner {
+      position: absolute;
+      bottom: 50px;
+      left: 10%;
+      width: 80%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    #bar {
+      width: 50px;
+      height: 100%;
+      background: #00f3ff;
+      box-shadow: 0 0 10px #00f3ff;
+      animation: scan 4s infinite linear;
+    }
+
+    @keyframes scan {
+      0% { transform: translateX(-50px); }
+      50% { transform: translateX(calc(100vw * 0.8)); }
+      100% { transform: translateX(-50px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Frame: <span id="frame-counter">0</span></div>
+    <div>Perf Now: <span id="perf-now">0.00</span> ms</div>
+    <div>Date Now: <span id="date-now">0</span></div>
+    <div>Clock Type: <span id="clock-type">Detecting...</span></div>
+  </div>
+
+  <div class="container">
+    <div class="cube">
+      <div class="face front">1</div>
+      <div class="face back">2</div>
+      <div class="face right">3</div>
+      <div class="face left">4</div>
+      <div class="face top">5</div>
+      <div class="face bottom">6</div>
+    </div>
+  </div>
+
+  <div id="scanner">
+    <div id="bar"></div>
+  </div>
+
+  <script>
+    let frameCount = 0;
+    const frameCounter = document.getElementById('frame-counter');
+    const perfNow = document.getElementById('perf-now');
+    const dateNow = document.getElementById('date-now');
+    const clockType = document.getElementById('clock-type');
+
+    function tick() {
+      frameCount++;
+      frameCounter.textContent = frameCount;
+      perfNow.textContent = performance.now().toFixed(2);
+      dateNow.textContent = Date.now();
+      
+      if (window.__HTV__ && window.__HTV__.hasRafShim) {
+        clockType.textContent = "DETERMINISTIC (Shimmed)";
+        clockType.style.color = "#00ff66";
+      } else {
+        clockType.textContent = "REALTIME (Standard)";
+        clockType.style.color = "#ff3366";
+      }
+      
+      requestAnimationFrame(tick);
+    }
+    
+    // Start loop
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

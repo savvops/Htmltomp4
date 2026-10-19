@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SVG Path Morphing & Filters Stress Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #020b14;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+    }
+
+    svg {
+      width: 70vmin;
+      height: 70vmin;
+      filter: url(#glow) url(#displacement);
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Frame: <span id="frame-counter">0</span></div>
+    <div>Perf Now: <span id="perf-now">0.00</span> ms</div>
+    <div>Date Now: <span id="date-now">0</span></div>
+    <div>Clock Type: <span id="clock-type">Detecting...</span></div>
+    <div>SVG Blobs: <span id="blob-detail">Dynamic Path Morph</span></div>
+  </div>
+
+  <svg viewBox="0 0 200 200">
+    <defs>
+      <!-- Glow Filter -->
+      <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="6" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
+      <!-- Turbulent Displacement Filter -->
+      <filter id="displacement" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="15" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+
+    <!-- Morphing Blob -->
+    <path id="blob-path" d="" fill="url(#gradient)" />
+    
+    <!-- Linear Gradient -->
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f3ff" />
+      <stop offset="50%" stop-color="#9900ff" />
+      <stop offset="100%" stop-color="#ff007f" />
+    </linearGradient>
+  </svg>
+
+  <script>
+    const pathElement = document.getElementById('blob-path');
+    const frameCounter = document.getElementById('frame-counter');
+    const perfNow = document.getElementById('perf-now');
+    const dateNow = document.getElementById('date-now');
+    const clockType = document.getElementById('clock-type');
+
+    let frameCount = 0;
+
+    // Generates a smooth morphing closed loop path representing a blob
+    function getBlobPath(time) {
+      const numPoints = 8;
+      const center = { x: 100, y: 100 };
+      const baseRadius = 60;
+      const points = [];
+
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        // Dynamically compute offset radius using nested sine waves over time
+        const radiusOffset = 15 * Math.sin(time * 1.5 + i * 2) + 8 * Math.cos(time * 3.0 - i * 1.5);
+        const radius = baseRadius + radiusOffset;
+        
+        const x = center.x + Math.cos(angle) * radius;
+        const y = center.y + Math.sin(angle) * radius;
+        points.push({ x, y });
+      }
+
+      // Format SVG path as cubic beziers for smoothness
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 0; i < numPoints; i++) {
+        const p1 = points[i];
+        const p2 = points[(i + 1) % numPoints];
+        
+        // Control points
+        const xc = (p1.x + p2.x) / 2;
+        const yc = (p1.y + p2.y) / 2;
+        
+        d += ` Q ${p1.x} ${p1.y}, ${xc} ${yc}`;
+      }
+      d += ' Z';
+      return d;
+    }
+
+    function tick() {
+      frameCount++;
+      
+      // Update HUD
+      frameCounter.textContent = frameCount;
+      perfNow.textContent = performance.now().toFixed(2);
+      dateNow.textContent = Date.now();
+      
+      if (window.__HTV__ && window.__HTV__.hasRafShim) {
+        clockType.textContent = "DETERMINISTIC (Shimmed)";
+        clockType.style.color = "#00ff66";
+      } else {
+        clockType.textContent = "REALTIME (Standard)";
+        clockType.style.color = "#ff3366";
+      }
+
+      const t = performance.now() / 1000;
+      
+      // Update path
+      pathElement.setAttribute('d', getBlobPath(t));
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

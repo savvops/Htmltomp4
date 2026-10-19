@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Heavy DOM rendering stress test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0a050d;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 100;
+    }
+
+    .node {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ff007f, #7f00ff);
+      filter: blur(1px) drop-shadow(0 0 5px rgba(255, 0, 127, 0.5));
+      will-change: transform;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Frame: <span id="frame-counter">0</span></div>
+    <div>Perf Now: <span id="perf-now">0.00</span> ms</div>
+    <div>Date Now: <span id="date-now">0</span></div>
+    <div>Clock Type: <span id="clock-type">Detecting...</span></div>
+    <div>DOM Nodes: <span id="nodes-count">3000</span></div>
+  </div>
+
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById('container');
+    const frameCounter = document.getElementById('frame-counter');
+    const perfNow = document.getElementById('perf-now');
+    const dateNow = document.getElementById('date-now');
+    const clockType = document.getElementById('clock-type');
+
+    const numNodes = 3000;
+    const nodes = [];
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    // Create DOM nodes
+    const fragment = document.createDocumentFragment();
+    for (let i = 0; i < numNodes; i++) {
+      const el = document.createElement('div');
+      el.className = 'node';
+      
+      // Store node physics
+      const node = {
+        element: el,
+        x: Math.random() * width,
+        y: Math.random() * height,
+        speedX: (Math.random() - 0.5) * 5,
+        speedY: (Math.random() - 0.5) * 5,
+        angle: Math.random() * Math.PI * 2,
+        angularSpeed: (Math.random() - 0.5) * 0.1,
+        radius: Math.random() * 50 + 20
+      };
+      
+      nodes.push(node);
+      fragment.appendChild(el);
+    }
+    container.appendChild(fragment);
+
+    let frameCount = 0;
+
+    function tick() {
+      frameCount++;
+      
+      // Update HUD
+      frameCounter.textContent = frameCount;
+      perfNow.textContent = performance.now().toFixed(2);
+      dateNow.textContent = Date.now();
+      
+      if (window.__HTV__ && window.__HTV__.hasRafShim) {
+        clockType.textContent = "DETERMINISTIC (Shimmed)";
+        clockType.style.color = "#00ff66";
+      } else {
+        clockType.textContent = "REALTIME (Standard)";
+        clockType.style.color = "#ff3366";
+      }
+
+      const t = performance.now() / 1000;
+
+      // Animate nodes
+      for (let i = 0; i < numNodes; i++) {
+        const n = nodes[i];
+        
+        // Move in complex orbits
+        n.angle += n.angularSpeed;
+        const x = n.x + Math.cos(n.angle) * n.radius;
+        const y = n.y + Math.sin(n.angle) * n.radius;
+
+        // Boundary checks for the anchor point
+        n.x += n.speedX;
+        n.y += n.speedY;
+
+        if (n.x < 0 || n.x > width) n.speedX *= -1;
+        if (n.y < 0 || n.y > height) n.speedY *= -1;
+
+        // Apply scale, rotation, and dynamic hue shift
+        const scale = 0.5 + 0.5 * Math.sin(t + i * 0.01);
+        const hue = (t * 50 + i * 0.1) % 360;
+        
+        n.element.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+        n.element.style.filter = `hue-rotate(${hue}deg) blur(1px) drop-shadow(0 0 3px rgba(255,0,127,0.5))`;
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>

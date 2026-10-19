@@ -1,0 +1,6 @@
+node_modules/
+output/
+videos/
+test_suite_output/
+.DS_Store
+*.log

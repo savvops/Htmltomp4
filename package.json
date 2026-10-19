@@ -1,0 +1,48 @@
+{
+  "name": "htmltomp4",
+  "version": "1.2.1",
+  "description": "Deterministic HTML, CSS, Canvas, SVG, and WebGL animation to MP4/WebM/ProRes video renderer powered by Chromium and FFmpeg.",
+  "main": "convert.js",
+  "bin": {
+    "htmltomp4": "cli.js"
+  },
+  "scripts": {
+    "convert": "node cli.js",
+    "test": "node --test test_suite/cli.test.js test_suite/renderer-lifecycle.test.js",
+    "test:converter": "node test_suite/converter-integration.test.js"
+  },
+  "files": [
+    "cli.js",
+    "convert.js",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/savvops/htmltomp4.git"
+  },
+  "homepage": "https://htmltomp4.com",
+  "bugs": {
+    "url": "https://github.com/savvops/htmltomp4/issues"
+  },
+  "keywords": [
+    "html-to-mp4",
+    "html-to-video",
+    "css-animation",
+    "canvas-to-video",
+    "webgl-to-video",
+    "puppeteer",
+    "ffmpeg",
+    "nvenc",
+    "prores",
+    "deterministic-rendering"
+  ],
+  "author": "Nelson Tsavnande <admin@savvstudio.com> (https://savvstudio.com)",
+  "license": "MIT",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "puppeteer": "^23.0.0",
+    "yargs": "^17.7.2"
+  }
+}

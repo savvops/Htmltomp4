@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Canvas 2D Particle Stress Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #050508;
+      color: #fff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      z-index: 10;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div>Frame: <span id="frame-counter">0</span></div>
+    <div>Perf Now: <span id="perf-now">0.00</span> ms</div>
+    <div>Date Now: <span id="date-now">0</span></div>
+    <div>Clock Type: <span id="clock-type">Detecting...</span></div>
+    <div>Particles: <span id="particle-count">5000</span></div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const frameCounter = document.getElementById('frame-counter');
+    const perfNow = document.getElementById('perf-now');
+    const dateNow = document.getElementById('date-now');
+    const clockType = document.getElementById('clock-type');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const particles = [];
+    const maxParticles = 5000;
+
+    // Seed particles
+    for (let i = 0; i < maxParticles; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        radius: Math.random() * 2 + 1,
+        color: `hsl(${Math.random() * 360}, 80%, 60%)`
+      });
+    }
+
+    let frameCount = 0;
+
+    function tick() {
+      frameCount++;
+      
+      // Update HUD
+      frameCounter.textContent = frameCount;
+      perfNow.textContent = performance.now().toFixed(2);
+      dateNow.textContent = Date.now();
+      
+      if (window.__HTV__ && window.__HTV__.hasRafShim) {
+        clockType.textContent = "DETERMINISTIC (Shimmed)";
+        clockType.style.color = "#00ff66";
+      } else {
+        clockType.textContent = "REALTIME (Standard)";
+        clockType.style.color = "#ff3366";
+      }
+
+      // Draw background
+      ctx.fillStyle = 'rgba(5, 5, 8, 0.2)'; // trail effect
+      ctx.fillRect(0, 0, width, height);
+
+      // Update & draw particles
+      for (let i = 0; i < maxParticles; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Bouncing boundaries
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+        // Apply a tiny gravity pull towards center
+        const dx = width / 2 - p.x;
+        const dy = height / 2 - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 10) {
+          p.vx += (dx / dist) * 0.02;
+          p.vy += (dy / dist) * 0.02;
+        }
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
