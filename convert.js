@@ -166,6 +166,28 @@ function getDefaultExecutablePath() {
   const bundledChrome = path.join(ROOT, 'chromium', 'chrome.exe');
   if (require('fs').existsSync(bundledChrome)) return bundledChrome;
 
+  // Check Puppeteer default cache directory (~/.cache/puppeteer) before falling back to system Chrome
+  const homePuppeteerCache = path.join(os.homedir(), '.cache', 'puppeteer');
+  if (require('fs').existsSync(homePuppeteerCache)) {
+    return undefined; // Let Puppeteer resolve from its populated cache
+  }
+
+  const systemCandidates = [
+    process.env.CHROME_PATH,
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].filter(Boolean);
+
+  for (const candidate of systemCandidates) {
+    if (require('fs').existsSync(candidate)) return candidate;
+  }
+
   return undefined;
 }
 
