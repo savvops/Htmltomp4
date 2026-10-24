@@ -1,6 +1,9 @@
 {
   "name": "htmltomp4",
   "version": "1.2.1",
+  "engines": {
+    "node": ">=18"
+  },
   "description": "Deterministic HTML, CSS, Canvas, SVG, and WebGL animation to MP4/WebM/ProRes video renderer powered by Chromium and FFmpeg.",
   "main": "convert.js",
   "bin": {
@@ -20,7 +23,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/savvops/htmltomp4.git"
+    "url": "https://github.com/savvops/Htmltomp4.git"
   },
   "homepage": "https://htmltomp4.com",
   "bugs": {
