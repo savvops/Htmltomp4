@@ -11,6 +11,7 @@ const {
   writeWithBackpressure,
   publishOutput,
   convertHtmlToVideo,
+  isBrowserLostError,
 } = require('../convert');
 
 function childWith(code) {
@@ -208,4 +209,103 @@ test('cancellation never closes a browser supplied by a desktop caller', { timeo
     assert.equal(closeCalls, 0);
     assert.deepEqual(await fs.readdir(directory), ['source.html']);
   } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('a closed page-audio pipe does not fail an encoder that exits cleanly', { timeout: 5000 }, async () => {
+  // Regression (2026-10-28): FFmpeg stops reading pipe:3 once -t is reached,
+  // and Windows reports the late PCM write as "write EOF". That must stay a
+  // warning; only the encoder exit code decides success.
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => { process.exitCode = 0; }, 200);'], { stdio: ['pipe', 'ignore', 'pipe', 'pipe'] });
+  const monitor = monitorFfmpegProcess(child, { timeoutMs: 4000 });
+  // Emit the exact libuv error seen on Windows; a real closed pipe is not
+  // reproducible deterministically across platforms.
+  child.stdio[3].emit('error', Object.assign(new Error('write EOF'), { code: 'EOF' }));
+  await monitor.wait();
+  assert.ok(monitor.state.audioPipeError);
+  assert.equal(monitor.state.error, null);
+});
+// Regression (2026-10-28): the bundled Chromium 131 browser process can crash
+// mid-render on Windows (exit 0xC0000005). Puppeteer then reports "Attempted to
+// use detached Frame". The render must be classified and retried on a fresh browser.
+function crashingBrowser(onNewPage) {
+  const browser = {
+    connected: true,
+    closeCalls: 0,
+    async newPage() {
+      if (onNewPage) return onNewPage(browser);
+      browser.connected = false;
+      throw new Error("Attempted to use detached Frame 'FAKE'.");
+    },
+    async close() { browser.closeCalls++; },
+  };
+  return browser;
+}
+
+test('a browser crash during a render is reported as BROWSER_LOST to a desktop caller', { timeout: 5000 }, async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'htmltomp4-browser-lost-shared-'));
+  const browser = crashingBrowser();
+  let newPageCalls = 0;
+  const counted = { ...browser, newPage: async () => { newPageCalls++; return browser.newPage(); } };
+  Object.defineProperty(counted, 'connected', { get: () => browser.connected });
+  try {
+    const input = path.join(directory, 'source.html');
+    await fs.writeFile(input, '<html></html>');
+    await assert.rejects(convertHtmlToVideo(input, {
+      browser: counted, outputDir: directory, _ffmpegResolved: process.execPath, _gpuSupport: {}, gpu: 'cpu',
+    }), (error) => isBrowserLostError(error) && /detached Frame/.test(error.message));
+    assert.equal(newPageCalls, 1, 'a caller-supplied browser is relaunched by the caller, not retried here');
+    assert.deepEqual(await fs.readdir(directory), ['source.html']);
+  } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
+
+test('an owned browser that crashes is relaunched and the render retried', { timeout: 5000 }, async () => {
+  const puppeteer = require('puppeteer');
+  const originalLaunch = puppeteer.launch;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'htmltomp4-browser-lost-owned-'));
+  const launched = [];
+  puppeteer.launch = async () => {
+    const b = launched.length === 0
+      ? crashingBrowser()
+      : crashingBrowser(async () => { throw new Error('second attempt reached'); });
+    launched.push(b);
+    return b;
+  };
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const input = path.join(directory, 'source.html');
+    await fs.writeFile(input, '<html></html>');
+    await assert.rejects(convertHtmlToVideo(input, {
+      outputDir: directory, _ffmpegResolved: process.execPath, _gpuSupport: {}, gpu: 'cpu',
+    }), /second attempt reached/);
+    assert.equal(launched.length, 2);
+    assert.equal(launched[0].closeCalls, 1, 'the crashed browser is still cleaned up');
+  } finally {
+    console.warn = originalWarn;
+    puppeteer.launch = originalLaunch;
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('browser-crash retries are bounded', { timeout: 5000 }, async () => {
+  const puppeteer = require('puppeteer');
+  const originalLaunch = puppeteer.launch;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'htmltomp4-browser-lost-bounded-'));
+  let launches = 0;
+  puppeteer.launch = async () => { launches++; return crashingBrowser(); };
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const input = path.join(directory, 'source.html');
+    await fs.writeFile(input, '<html></html>');
+    await assert.rejects(convertHtmlToVideo(input, {
+      outputDir: directory, _ffmpegResolved: process.execPath, _gpuSupport: {}, gpu: 'cpu',
+    }), { code: 'BROWSER_LOST' });
+    assert.equal(launches, 5, 'one render plus four retries');
+    assert.deepEqual(await fs.readdir(directory), ['source.html']);
+  } finally {
+    console.warn = originalWarn;
+    puppeteer.launch = originalLaunch;
+    await fs.rm(directory, { recursive: true, force: true });
+  }
 });

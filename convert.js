@@ -263,7 +263,7 @@ function writeWithBackpressure(stream, chunk) {
 }
 
 function monitorFfmpegProcess(child, { timeoutMs = Infinity, onStderr, onFailure } = {}) {
-  const state = { closed: false, error: null, stderr: '' };
+  const state = { closed: false, error: null, stderr: '', audioPipeError: null };
   let timer = null;
   let settled = false;
   let resolveDone;
@@ -291,9 +291,12 @@ function monitorFfmpegProcess(child, { timeoutMs = Infinity, onStderr, onFailure
     if (code !== 0) fail(new Error(`ffmpeg exited with code ${code}${signal ? `, signal ${signal}` : ''}`));
     finish();
   });
-  for (const stream of [child.stdin, child.stdio && child.stdio[3]]) {
-    if (stream) stream.on('error', fail);
-  }
+  if (child.stdin) child.stdin.on('error', fail);
+  // The page-audio pipe is best effort: FFmpeg stops reading it once -t is
+  // reached, so a closed pipe ("write EOF"/EPIPE) must not fail a render that
+  // exits 0. A real FFmpeg failure still surfaces through its exit code.
+  const audioPipe = child.stdio && child.stdio[3];
+  if (audioPipe) audioPipe.on('error', (error) => { state.audioPipeError = error; });
   if (child.stderr) {
     child.stderr.setEncoding('utf8');
     child.stderr.on('data', (data) => {
@@ -509,7 +512,66 @@ async function selectRuntimeGpuEncoder(ffmpegPath, gpuSupport, config) {
   return null;
 }
 
+// Chromium can crash mid-render: the bundled 131 build on Windows sometimes
+// exits with 0xC0000005, the CDP connection drops and every frame detaches
+// ("Attempted to use detached Frame"). Such failures get a stable code so a
+// caller can relaunch the browser and retry; staged outputs make that safe.
+const BROWSER_LOST_CODE = 'BROWSER_LOST';
+// Crashes cluster under load (3 in a row seen once in 60 renders), so allow 4 retries.
+const DEFAULT_BROWSER_CRASH_RETRIES = 4;
+
+function isBrowserConnected(browser) {
+  if (!browser) return false;
+  if (typeof browser.connected === 'boolean') return browser.connected;
+  if (typeof browser.isConnected === 'function') return browser.isConnected();
+  return true;
+}
+
+async function browserWasLost(browser, graceMs = 500) {
+  if (!browser) return false;
+  if (!isBrowserConnected(browser)) return true;
+  // A detached-frame or "Target closed" error can surface just before the
+  // browser's disconnected event; give it a short window to arrive.
+  if (typeof browser.once !== 'function') return false;
+  await new Promise((resolve) => {
+    const timer = setTimeout(done, graceMs);
+    function done() {
+      clearTimeout(timer);
+      if (typeof browser.off === 'function') browser.off('disconnected', done);
+      resolve();
+    }
+    browser.once('disconnected', done);
+  });
+  return !isBrowserConnected(browser);
+}
+
+function browserLostError(cause) {
+  const error = new Error(`Chromium crashed or disconnected during the render (${cause && cause.message ? cause.message.split('\n')[0] : 'unknown error'}).`);
+  error.code = BROWSER_LOST_CODE;
+  error.cause = cause;
+  return error;
+}
+
+function isBrowserLostError(error) {
+  return !!error && error.code === BROWSER_LOST_CODE;
+}
+
 async function convertHtmlToVideo(htmlFile, config) {
+  // A browser supplied by the caller (the desktop app) is relaunched by that
+  // caller; an owned browser is simply launched fresh by the next attempt.
+  const configured = Number(config.browserCrashRetries);
+  const retries = config.browser ? 0 : (Number.isFinite(configured) && configured >= 0 ? Math.floor(configured) : DEFAULT_BROWSER_CRASH_RETRIES);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await convertHtmlToVideoAttempt(htmlFile, config);
+    } catch (error) {
+      if (!isBrowserLostError(error) || attempt >= retries || (config.signal && config.signal.aborted)) throw error;
+      console.warn(`[convert] ${path.basename(htmlFile)}: ${error.message} Retrying with a fresh browser (attempt ${attempt + 2}/${retries + 1}).`);
+    }
+  }
+}
+
+async function convertHtmlToVideoAttempt(htmlFile, config) {
   config = getConfig(config || {});
   if (typeof config.updateStatus !== 'function') config.updateStatus = () => {};
   if (config.workerId == null) config.workerId = 1;
@@ -625,6 +687,15 @@ async function convertHtmlToVideo(htmlFile, config) {
   let audioBuffer = Buffer.alloc(0);
   let audioBytesWritten = 0;
   const audioBufferMaxSize = 1024 * 1024;
+  // Never feed FFmpeg more PCM than the video needs: capture runs in wall-clock
+  // time, so a render slower than real time would otherwise overfill the pipe.
+  const takeAudioWithinBudget = (buf) => {
+    if (!Number.isFinite(totalFrames) || !Number.isFinite(dtMs)) return buf;
+    const budget = Math.ceil((totalFrames * dtMs / 1000) * config.audioSampleRate) * 4;
+    let remaining = Math.max(0, budget - audioBytesWritten);
+    remaining -= remaining % 4;
+    return buf.length > remaining ? buf.subarray(0, remaining) : buf;
+  };
 
   const wantsAudioCapture = !!(config.audio && !config.audioFile);
   const launchArgs = makeLaunchArgs({
@@ -1055,11 +1126,11 @@ async function convertHtmlToVideo(htmlFile, config) {
             }
 
             if (audioBuffer.length >= audioBufferMaxSize && ffmpegProcess && ffmpegProcess.stdio[3] && !ffmpegProcess.stdio[3].destroyed) {
-              const toWrite = audioBuffer;
+              const toWrite = takeAudioWithinBudget(audioBuffer);
               audioBuffer = Buffer.alloc(0);
               try {
                 audioBytesWritten += toWrite.length;
-                ffmpegProcess.stdio[3].write(toWrite);
+                if (toWrite.length > 0) ffmpegProcess.stdio[3].write(toWrite);
               } catch {
                 // Ignore late audio pipe writes.
               }
@@ -1253,11 +1324,11 @@ async function convertHtmlToVideo(htmlFile, config) {
       }
 
       if (config.audio && audioBuffer.length > 0 && ffmpegProcess && ffmpegProcess.stdio[3] && !ffmpegProcess.stdio[3].destroyed) {
-        const toWrite = audioBuffer;
+        const toWrite = takeAudioWithinBudget(audioBuffer);
         audioBuffer = Buffer.alloc(0);
         try {
           audioBytesWritten += toWrite.length;
-          ffmpegProcess.stdio[3].write(toWrite);
+          if (toWrite.length > 0) ffmpegProcess.stdio[3].write(toWrite);
         } catch {
           // Ignore late audio writes when ffmpeg is shutting down.
         }
@@ -1307,8 +1378,9 @@ async function convertHtmlToVideo(htmlFile, config) {
 
       if (audioBuffer.length > 0 && ffmpegProcess && ffmpegProcess.stdio[3] && !ffmpegProcess.stdio[3].destroyed) {
         try {
-          audioBytesWritten += audioBuffer.length;
-          ffmpegProcess.stdio[3].end(audioBuffer);
+          const tail = takeAudioWithinBudget(audioBuffer);
+          audioBytesWritten += tail.length;
+          ffmpegProcess.stdio[3].end(tail);
         } catch {
           try {
             ffmpegProcess.stdio[3].end();
@@ -1340,6 +1412,7 @@ async function convertHtmlToVideo(htmlFile, config) {
       if (ffmpegMonitor.state.error && ffmpegMonitor.state.error.code === 'ETIMEDOUT') throw ffmpegMonitor.state.error;
     }
     if (config.signal && config.signal.aborted) throw cancellationError();
+    if (!isBrowserLostError(error) && await browserWasLost(browser)) throw browserLostError(error);
     throw error;
   } finally {
     if (ffmpegMonitor) ffmpegMonitor.cleanup();
@@ -1361,8 +1434,12 @@ async function main(args) {
 }
 
 module.exports = {
+  DEFAULT_BROWSER_CRASH_RETRIES,
   main,
   convertHtmlToVideo,
+  BROWSER_LOST_CODE,
+  isBrowserLostError,
+  browserWasLost,
   getConfig,
   makeLaunchArgs,
   resolveFfmpegPathWithGpuDetection,
