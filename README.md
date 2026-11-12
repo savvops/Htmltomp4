@@ -1,5 +1,7 @@
 # HTMLtoMP4 CLI (`htmltomp4`)
 
+[![npm version](https://img.shields.io/npm/v/htmltomp4)](https://www.npmjs.com/package/htmltomp4)
+
 **Turn local HTML, CSS, Canvas, SVG, and WebGL animations into deterministic MP4, WebM, or ProRes 4444 videos** using Chromium and FFmpeg.
 
 No screen recording, no dropped frames, and no cloud upload queues. Instead of recording wall-clock time, `htmltomp4` steps browser time (`requestAnimationFrame`, CSS/Web Animations API, SVG SMIL, and seeded `Math.random`) frame-by-frame and pipes frames directly to FFmpeg with automatic hardware encoder detection (NVIDIA NVENC, AMD AMF, Intel QSV, or CPU fallback).
@@ -31,11 +33,23 @@ If you prefer a native GUI with **bundled Chromium + FFmpeg** (zero Node.js or P
 
 ### 1. Install
 
-Clone the repository and install dependencies (requires **Node.js 18+**):
+Install from npm (requires **Node.js 18+**):
 
 ```bash
-git clone https://github.com/savvops/htmltomp4.git
-cd htmltomp4
+npm install -g htmltomp4
+```
+
+Or skip the install and run it directly:
+
+```bash
+npx htmltomp4 --help
+```
+
+Prefer working from source? Clone the repository instead:
+
+```bash
+git clone https://github.com/savvops/Htmltomp4.git
+cd Htmltomp4
 npm install
 ```
 
@@ -43,17 +57,22 @@ npm install
 
 ### 2. Render an Animation
 
-Try rendering one of the included examples:
-
 ```bash
 # Render a 5-second 1080p@30fps MP4
-node cli.js examples/css_animation.html --duration 5
+htmltomp4 your-animation.html --duration 5
 
 # Render at 4K 60fps
-node cli.js examples/canvas_particles.html --width 3840 --height 2160 --fps 60 --duration 5
+htmltomp4 your-animation.html --width 3840 --height 2160 --fps 60 --duration 5
 
 # Render an entire folder of .html files in parallel
-node cli.js --inputDir ./examples --outputDir ./videos --parallel 2 --duration 4
+htmltomp4 --inputDir ./my-animations --outputDir ./videos --parallel 2 --duration 4
+```
+
+Working from a clone? Try the included examples:
+
+```bash
+node cli.js examples/css_animation.html --duration 5
+node cli.js examples/canvas_particles.html --width 3840 --height 2160 --fps 60 --duration 5
 ```
 
 Output videos are written to `./output/` by default (or your specified `--outputDir`).
@@ -87,7 +106,7 @@ htmltomp4 <file.html|directory> [more inputs...] [options]
 | `--executablePath` | *(auto)* | Custom path to Chrome/Chromium executable |
 | `--ffmpegPath` | *(auto)* | Custom path to FFmpeg executable |
 
-Run `node cli.js --help` for the complete list of encoder presets (`--nvencPreset`, `--cpuCrf4k`, `--pixFmt`, etc.).
+Run `htmltomp4 --help` (or `node cli.js --help` from a clone) for the complete list of encoder presets (`--nvencPreset`, `--cpuCrf4k`, `--pixFmt`, etc.).
 
 ---
 
