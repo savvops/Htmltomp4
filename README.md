@@ -31,26 +31,17 @@ If you prefer a native GUI with **bundled Chromium + FFmpeg** (zero Node.js or P
 
 ## 🚀 Quick Start (CLI)
 
-### 1. Install
+### 1. Run via `npx` or Install Globally
 
-Install from npm (requires **Node.js 18+**):
+Requires **Node.js 18+**:
 
 ```bash
+# Run directly without installing
+npx htmltomp4 your-animation.html --duration 5
+
+# Or install globally
 npm install -g htmltomp4
-```
-
-Or skip the install and run it directly:
-
-```bash
-npx htmltomp4 --help
-```
-
-Prefer working from source? Clone the repository instead:
-
-```bash
-git clone https://github.com/savvops/Htmltomp4.git
-cd Htmltomp4
-npm install
+htmltomp4 your-animation.html --duration 5
 ```
 
 *(Puppeteer automatically downloads a compatible Chromium binary, and `ffmpeg-static` provides a fallback FFmpeg binary if `ffmpeg` is not on your system `PATH`.)*
@@ -59,18 +50,23 @@ npm install
 
 ```bash
 # Render a 5-second 1080p@30fps MP4
-htmltomp4 your-animation.html --duration 5
+npx htmltomp4 animation.html --duration 5
 
 # Render at 4K 60fps
-htmltomp4 your-animation.html --width 3840 --height 2160 --fps 60 --duration 5
+npx htmltomp4 animation.html --width 3840 --height 2160 --fps 60 --duration 5
 
 # Render an entire folder of .html files in parallel
-htmltomp4 --inputDir ./my-animations --outputDir ./videos --parallel 2 --duration 4
+npx htmltomp4 --inputDir ./my-animations --outputDir ./videos --parallel 2 --duration 4
 ```
 
-Working from a clone? Try the included examples:
+Prefer working from source? Clone the repository instead:
 
 ```bash
+git clone https://github.com/savvops/Htmltomp4.git
+cd Htmltomp4
+npm install
+
+# Run the included examples:
 node cli.js examples/css_animation.html --duration 5
 node cli.js examples/canvas_particles.html --width 3840 --height 2160 --fps 60 --duration 5
 ```
